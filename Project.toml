@@ -11,3 +11,11 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MosekTools = "1ec41992-ff65-5c91-ac43-2df89e9693a4"
 Pajarito = "2f354839-79df-5901-9f0a-cdb2aac6fe30"
 SumOfSquares = "4b9e565b-77fc-50a5-a571-1244f986bda1"
+
+[compat]
+DynamicPolynomials = "0.5.3"
+Hypatia = "0.7.3"
+JuMP = "1.16.0"
+MosekTools = "0.15.1"
+Pajarito = "0.8.2"
+SumOfSquares = "0.7.3"
