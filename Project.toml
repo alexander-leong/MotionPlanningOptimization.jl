@@ -1,4 +1,4 @@
-name = "TrajOpt"
+name = "MotionPlanningOptimization"
 uuid = "3c0c87de-e99a-45ee-acb8-6f5f6f7d0613"
 authors = ["Alexander Leong <toshiba_alexander@live.com>"]
 version = "0.1.0"

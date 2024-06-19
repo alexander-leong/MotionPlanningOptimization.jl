@@ -1,4 +1,4 @@
-module TrajOpt
+module MotionPlanningOptimization
 
 using DynamicPolynomials
 using Hypatia
