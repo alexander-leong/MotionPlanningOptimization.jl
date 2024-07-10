@@ -6,12 +6,16 @@ using InteractiveUtils
 
 # ╔═╡ fb3e2635-92a1-4dd0-8398-13c7c08294f7
 begin
+	using Cbc
+	using CPLEX
 	using DynamicPolynomials
+	using HiGHS
 	using Hypatia
 	using JuMP
 	using LinearAlgebra
 	using MosekTools
 	using Pajarito
+	using SCIP
 	using SumOfSquares
 end
 
@@ -24,6 +28,16 @@ begin
 	  yu::Float64
 	  zl::Float64
 	  zu::Float64
+	end
+
+	@enum Inequality GREATER_THAN_OR_EQUAL_TO LESS_THAN_OR_EQUAL_TO
+
+	struct Halfspace
+	  xCoef::Float64
+	  yCoef::Float64
+	  zCoef::Float64
+	  c::Float64
+	  inequality::Inequality
 	end
 end
 
@@ -45,12 +59,108 @@ begin
 	boxes[5] = box₅
 	boxes[6] = box₆
 	boxes[7] = box₇
+
+	# set polyhedral constraints
+	halfspace_offset_xl₁ = Halfspace(1, 0, 0, -10, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_yl₁ = Halfspace(0, 1, 0, -10, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_zl₁ = Halfspace(0, 0, 1, -10, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_xu₁ = Halfspace(1, 0, 0, 0, LESS_THAN_OR_EQUAL_TO)
+	halfspace_offset_yu₁ = Halfspace(0, 1, 0, 20, LESS_THAN_OR_EQUAL_TO)
+	halfspace_offset_zu₁ = Halfspace(0, 0, 1, 10, LESS_THAN_OR_EQUAL_TO)
+	
+	halfspace_offset_xl₂ = Halfspace(1, 0, 0, 0, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_yl₂ = Halfspace(0, 1, 0, 5, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_zl₂ = Halfspace(0, 0, 1, -10, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_xu₂ = Halfspace(1, 0, 0, 25, LESS_THAN_OR_EQUAL_TO)
+	halfspace_offset_yu₂ = Halfspace(0, 1, 0, 20, LESS_THAN_OR_EQUAL_TO)
+	halfspace_offset_zu₂ = Halfspace(0, 0, 1, 30, LESS_THAN_OR_EQUAL_TO)
+	
+	halfspace_offset_xl₃ = Halfspace(1, 0, 0, -10, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_yl₃ = Halfspace(0, 1, 0, 5, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_zl₃ = Halfspace(0, 0, 1, -10, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_xu₃ = Halfspace(1, 0, 0, 25, LESS_THAN_OR_EQUAL_TO)
+	halfspace_offset_yu₃ = Halfspace(0, 1, 0, 20, LESS_THAN_OR_EQUAL_TO)
+	halfspace_offset_zu₃ = Halfspace(0, 0, 1, 10, LESS_THAN_OR_EQUAL_TO)
+	
+	halfspace_offset_xl₄ = Halfspace(1, 0, 0, -10, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_yl₄ = Halfspace(0, 1, 0, -10, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_zl₄ = Halfspace(0, 0, 1, -10, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_xu₄ = Halfspace(1, 0, 0, 0, LESS_THAN_OR_EQUAL_TO)
+	halfspace_offset_yu₄ = Halfspace(0, 1, 0, 0, LESS_THAN_OR_EQUAL_TO)
+	halfspace_offset_zu₄ = Halfspace(0, 0, 1, 30, LESS_THAN_OR_EQUAL_TO)
+	
+	halfspace_offset_xl₅ = Halfspace(1, 0, 0, 15, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_yl₅ = Halfspace(0, 1, 0, -10, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_zl₅ = Halfspace(0, 0, 1, -10, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_xu₅ = Halfspace(1, 0, 0, 25, LESS_THAN_OR_EQUAL_TO)
+	halfspace_offset_yu₅ = Halfspace(0, 1, 0, 20, LESS_THAN_OR_EQUAL_TO)
+	halfspace_offset_zu₅ = Halfspace(0, 0, 1, 10, LESS_THAN_OR_EQUAL_TO)
+	
+	halfspace_offset_xl₆ = Halfspace(1, 0, 0, 0, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_yl₆ = Halfspace(0, 1, 0, -10, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_zl₆ = Halfspace(0, 0, 1, 20, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_xu₆ = Halfspace(1, 0, 0, 25, LESS_THAN_OR_EQUAL_TO)
+	halfspace_offset_yu₆ = Halfspace(0, 1, 0, 20, LESS_THAN_OR_EQUAL_TO)
+	halfspace_offset_zu₆ = Halfspace(0, 0, 1, 30, LESS_THAN_OR_EQUAL_TO)
+	
+	halfspace_offset_xl₇ = Halfspace(1, 0, 0, -10, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_yl₇ = Halfspace(0, 1, 0, -10, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_zl₇ = Halfspace(0, 0, 1, 20, GREATER_THAN_OR_EQUAL_TO)
+	halfspace_offset_xu₇ = Halfspace(1, 0, 0, 25, LESS_THAN_OR_EQUAL_TO)
+	halfspace_offset_yu₇ = Halfspace(0, 1, 0, 5, LESS_THAN_OR_EQUAL_TO)
+	halfspace_offset_zu₇ = Halfspace(0, 0, 1, 30, LESS_THAN_OR_EQUAL_TO)
+	
+	polyhedrons = Array{Array{Halfspace}}(UndefInitializer(), 7)
+    polyhedron₁ = [halfspace_offset_xl₁, halfspace_offset_yl₁, halfspace_offset_zl₁, halfspace_offset_xu₁, halfspace_offset_yu₁, halfspace_offset_zu₁]
+    polyhedron₂ = [halfspace_offset_xl₂, halfspace_offset_yl₂, halfspace_offset_zl₂, halfspace_offset_xu₂, halfspace_offset_yu₂, halfspace_offset_zu₂]
+    polyhedron₃ = [halfspace_offset_xl₃, halfspace_offset_yl₃, halfspace_offset_zl₃, halfspace_offset_xu₃, halfspace_offset_yu₃, halfspace_offset_zu₃]
+    polyhedron₄ = [halfspace_offset_xl₄, halfspace_offset_yl₄, halfspace_offset_zl₄, halfspace_offset_xu₄, halfspace_offset_yu₄, halfspace_offset_zu₄]
+    polyhedron₅ = [halfspace_offset_xl₅, halfspace_offset_yl₅, halfspace_offset_zl₅, halfspace_offset_xu₅, halfspace_offset_yu₅, halfspace_offset_zu₅]
+    polyhedron₆ = [halfspace_offset_xl₆, halfspace_offset_yl₆, halfspace_offset_zl₆, halfspace_offset_xu₆, halfspace_offset_yu₆, halfspace_offset_zu₆]
+    polyhedron₇ = [halfspace_offset_xl₇, halfspace_offset_yl₇, halfspace_offset_zl₇, halfspace_offset_xu₇, halfspace_offset_yu₇, halfspace_offset_zu₇]
+    polyhedrons[1] = polyhedron₁
+    polyhedrons[2] = polyhedron₂
+    polyhedrons[3] = polyhedron₃
+    polyhedrons[4] = polyhedron₄
+    polyhedrons[5] = polyhedron₅
+    polyhedrons[6] = polyhedron₆
+    polyhedrons[7] = polyhedron₇
+end
+
+# ╔═╡ a1ff6390-ede4-4b42-b756-e52e32ddd99b
+function set_optimal_start_values(model::Model)
+    # Store a mapping of the variable primal solution
+    variable_primal = Dict(x => value(x) for x in all_variables(model))
+    # In the following, we loop through every constraint and store a mapping
+    # from the constraint index to a tuple containing the primal and dual
+    # solutions.
+    constraint_solution = Dict()
+    for (F, S) in list_of_constraint_types(model)
+        # We add a try-catch here because some constraint types might not
+        # support getting the primal or dual solution.
+        try
+            for ci in all_constraints(model, F, S)
+                constraint_solution[ci] = (value(ci), dual(ci))
+            end
+        catch
+            @info("Something went wrong getting $F-in-$S. Skipping")
+        end
+    end
+    # Now we can loop through our cached solutions and set the starting values.
+    for (x, primal_start) in variable_primal
+        set_start_value(x, primal_start)
+    end
+    for (ci, (primal_start, dual_start)) in constraint_solution
+        set_start_value(ci, primal_start)
+        set_dual_start_value(ci, dual_start)
+    end
+    return
 end
 
 # ╔═╡ 4a6c43b6-f817-4bfb-ab29-54c8d95e6099
 begin
 	X₀ = Dict()
-	X₀[:x], X₀[:y], X₀[:z] = -5.0, -5.0, -5.0
+	X₀[:x], X₀[:y], X₀[:z] = -5.0, -5.0, 15.0
 	X₀′ = Dict()
 	X₀′[:x], X₀′[:y], X₀′[:z] = 1e0, 1e0, 1e0
 	X₀″ = Dict()
@@ -62,69 +172,102 @@ begin
 	X₁″ = Dict()
 	X₁″[:x], X₁″[:y], X₁″[:z] = 1, 1, 1
 	
+    # Reformulate disjunctive constraint using big M method,
+    # see https://optimization.cbe.cornell.edu/index.php?title=Disjunctive_inequalities#Big-M_Method
+    # or https://en.wikipedia.org/wiki/Big_M_method
+    Mxl = -10.0
+    Mxu = 25.0
+    Myl = -10.0
+    Myu = 20.0
+    Mzl = -10.0
+    Mzu = 30.0
+	M = 50
+	
+	function enforce_box_constraints(model, p, H, S, j)
+	  for box in boxes
+		xl, xu, yl, yu, zl, zu = box.xl, box.xu, box.yl, box.yu, box.zl, box.zu
+		@constraint(model, p[(:x, j)][1] >= Mxl + (xl-Mxl)*H[j, box], domain = S)
+		@constraint(model, p[(:x, j)][1] <= Mxu + (xu-Mxu)*H[j, box], domain = S)
+		@constraint(model, p[(:y, j)][1] >= Myl + (yl-Myl)*H[j, box], domain = S)
+		@constraint(model, p[(:y, j)][1] <= Myu + (yu-Myu)*H[j, box], domain = S)
+		@constraint(model, p[(:z, j)][1] >= Mzl + (zl-Mzl)*H[j, box], domain = S)
+		@constraint(model, p[(:z, j)][1] <= Mzu + (zu-Mzu)*H[j, box], domain = S)
+	  end
+	end
+
+	function enforce_polyhedral_constraints(model, p, H, S, j)
+	  for polyhedron in polyhedrons
+		for halfspace in polyhedron
+		  if halfspace.inequality == GREATER_THAN_OR_EQUAL_TO
+			@constraint(model, (halfspace.xCoef*p[(:x, j)][1] + halfspace.yCoef*p[(:y, j)][1] + halfspace.zCoef*p[(:z, j)][1]) >= -M + (halfspace.c + M)*H[j, polyhedron], domain = S)
+		  elseif halfspace.inequality == LESS_THAN_OR_EQUAL_TO
+			@constraint(model, (halfspace.xCoef*p[(:x, j)][1] + halfspace.yCoef*p[(:y, j)][1] + halfspace.zCoef*p[(:z, j)][1]) <= M + (halfspace.c - M)*H[j, polyhedron], domain = S)
+		  end
+		end
+	  end
+	end
+	
 	function solve_for_optimal_path(N)
+	  oa_solver = MosekTools.Optimizer
 	  model = SOSModel(optimizer_with_attributes(Pajarito.Optimizer,
-	  "conic_solver" => optimizer_with_attributes(Hypatia.Optimizer),
-	  "oa_solver" => optimizer_with_attributes(Mosek.Optimizer)))
-	  set_attribute(model, "iteration_limit", 38400)
+	  "conic_solver" => optimizer_with_attributes(Hypatia.Optimizer, MOI.Silent() => true),
+	  "oa_solver" => optimizer_with_attributes(oa_solver)))
+            #"mip_feasibility_tolerance" => 1e-8,
+            #"mip_rel_gap" => 1e-6)))
+            #"pdlp_d_gap_tol" => 1e0,
+            #"pdlp_iteration_limit" => 32768,
+		    #"primal_feasibility_tolerance" => 1e-6,
+		  	#"dual_feasibility_tolerance" => 1e-6,
+	  		#"solver" => "pdlp")))
+	  set_attribute(model, "iteration_limit", 76800)
 	
 	  r = 3 # order of polynomial
 	  @polyvar(t)
 	  Z = monomials([t], 0:r)
-	  @variable(model, H[1:N, boxes], Bin)
+	  # @variable(model, H[1:N, boxes], Bin)
+	  @variable(model, H[1:N, polyhedrons], Bin)
 	
 	  p = Dict()
-	  # Reformulate disjunctive constraint using big M method,
-	  # see https://optimization.cbe.cornell.edu/index.php?title=Disjunctive_inequalities#Big-M_Method
-	  # or https://en.wikipedia.org/wiki/Big_M_method
-	  Mxl = -10.0
-	  Mxu = 25.0
-	  Myl = -10.0
-	  Myu = 20.0
-	  Mzl = -10.0
-	  Mzu = 30.0
 	
 	  # setup the polynomials so they satisfy the box constraints and each polynomial can be a member of only a single segment
 	  T = collect(0:1:N)
 	  for j in 1:N
-	    @constraint(model, sum(H[j, box] for box in boxes) == 1)
+	    # @constraint(model, sum(H[j, box] for box in boxes) == 1)
+		@constraint(model, sum(H[j, polyhedron] for polyhedron in polyhedrons) == 1)
 	    p[(:x, j)] = @variable(model, [1:1], SumOfSquares.Poly(Z))
 	    p[(:y, j)] = @variable(model, [1:1], SumOfSquares.Poly(Z))
 	    p[(:z, j)] = @variable(model, [1:1], SumOfSquares.Poly(Z))
 	    S = @set t >= T[j] && t <= T[j+1]
-	    for box in boxes
-	      xl, xu, yl, yu, zl, zu = box.xl, box.xu, box.yl, box.yu, box.zl, box.zu
-	      @constraint(model, p[(:x, j)][1] >= Mxl + (xl-Mxl)*H[j, box], domain = S)
-	      @constraint(model, p[(:x, j)][1] <= Mxu + (xu-Mxu)*H[j, box], domain = S)
-	      @constraint(model, p[(:y, j)][1] >= Myl + (yl-Myl)*H[j, box], domain = S)
-	      @constraint(model, p[(:y, j)][1] <= Myu + (yu-Myu)*H[j, box], domain = S)
-	      @constraint(model, p[(:z, j)][1] >= Mzl + (zl-Mzl)*H[j, box], domain = S)
-	      @constraint(model, p[(:z, j)][1] <= Mzu + (zu-Mzu)*H[j, box], domain = S)
-	    end
+	    # enforce_box_constraints(model, p, H, S, j)
+		enforce_polyhedral_constraints(model, p, H, S, j)
 	  end
 	    print(p[(:x, 1)][1])
 	
 	  # formulate optimization problem
 	  for ax in (:x, :y, :z)
 	    @constraint(model, p[(ax, 1)][1]([0]) == X₀[ax])
-	    @constraint(model, differentiate(p[ax, 1][1], t, 1)([0]) == X₀′[ax])
-	    @constraint(model, differentiate(p[ax, 1][1], t, 2)([0]) == X₀″[ax])
+	    @constraint(model, differentiate(p[(ax, 1)][1], t, 1)([0]) == X₀′[ax])
+	    @constraint(model, differentiate(p[(ax, 1)][1], t, 2)([0]) == X₀″[ax])
 	    for j in 1:N-1
 	      @constraint(model, p[(ax, j)][1]([T[j+1]]) == p[(ax, j+1)][1]([T[j+1]]))
 	      @constraint(model, differentiate(p[(ax, j)][1], t, 1)([T[j+1]]) == differentiate(p[(ax, j+1)][1], t, 1)([T[j+1]]))
 	    end
 	    @constraint(model, p[(ax, N)][1]([T[N]]) == X₁[ax])
-	    @constraint(model, differentiate(p[ax, N][1], t, 1)([T[N]]) == X₁′[ax])
-	    @constraint(model, differentiate(p[ax, N][1], t, 2)([T[N]]) == X₁″[ax])
+	    @constraint(model, differentiate(p[(ax, N)][1], t, 1)([T[N]]) == X₁′[ax])
+	    @constraint(model, differentiate(p[(ax, N)][1], t, 2)([T[N]]) == X₁″[ax])
 	  end
 	
 	  @variable(model, γ[keys(p)] >= 0)
 	  for (key, val) in p
 	    @constraint(model, γ[key] >= differentiate(val[1], t, 3))
-	    @constraint(model, -γ[key] <= -differentiate(val[1], t, 3))
+	    @constraint(model, -γ[key] >= differentiate(val[1], t, 3))
 	  end
 	
 	  @objective(model, Min, sum(γ))
+	  # resume from last solution
+	  if termination_status(model) != MOI.OPTIMIZE_NOT_CALLED
+	  	set_optimal_start_values(model)
+	  end
 	  # solve the problem
 	  solve_time = @timed optimize!(model)
 	  if termination_status(model) != OPTIMAL
@@ -173,7 +316,7 @@ end
 
 # ╔═╡ 2336b24a-5214-43c2-b039-e1b909038fa4
 begin
-	N = 4 # number of trajectory segments
+	N = 5 # number of trajectory segments
 	model, solve_time, x, y, z, x_λ′, y_λ′, z_λ′, x_λ″, y_λ″, z_λ″, x_λ‴, y_λ‴, z_λ‴ = solve_for_optimal_path(N)
 end
 
@@ -189,14 +332,14 @@ begin
 	using GLMakie
 	using GeometryBasics
 	
-	fig = Figure()
+	fig = Figure(size = (1200, 800))
 	ax = Axis3(
 	    fig[1, 1],
 	    aspect = :data,
 	    viewmode = :fit
 	    )
-	ax.azimuth = pi/4
-	ax.elevation = pi/4
+	ax.azimuth = pi/6
+	ax.elevation = pi/3
 	
 	theta = 0
 	C = [
@@ -235,8 +378,8 @@ begin
 		    3 6 7
 		]
 		
-		m = mesh!(ax, points, faces, alpha=0.25, color=color, transparency=true, visible=true)
-		# wireframe!(m[:mesh], color=(:black, 0.2), linewidth=2, transparency=true)
+		m = mesh!(ax, points, faces, alpha=0.0625, color=color, transparency=true, visible=false)
+		wireframe!(m[:mesh], color=(:black, 0.2), linewidth=2, transparency=true)
 	end
 	
 	# show obstacles in scene
@@ -253,7 +396,7 @@ begin
 	# render_box(box₇, :yellow)
 
 	# show trajectory
-    scatterlines!(x, y, z, markersize=5, markercolor = :orange)
+    scatterlines!(x, y, z, markersize=15, markercolor = :orange)
 	
 	fig
 end
@@ -261,24 +404,32 @@ end
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
+CPLEX = "a076750e-1247-5638-91d2-ce28b192dca0"
+Cbc = "9961bab8-2fa3-5c5a-9d89-47fab24efd76"
 DynamicPolynomials = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
+HiGHS = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
 Hypatia = "b99e6be6-89ff-11e8-14f8-45c827f4f8f2"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MosekTools = "1ec41992-ff65-5c91-ac43-2df89e9693a4"
 Pajarito = "2f354839-79df-5901-9f0a-cdb2aac6fe30"
+SCIP = "82193955-e24f-5292-bf16-6f2c5261a85f"
 SumOfSquares = "4b9e565b-77fc-50a5-a571-1244f986bda1"
 
 [compat]
+CPLEX = "~1.0.3"
+Cbc = "~1.2.0"
 DynamicPolynomials = "~0.5.7"
 GLMakie = "~0.10.2"
 GeometryBasics = "~0.4.11"
+HiGHS = "~1.9.1"
 Hypatia = "~0.8.1"
 JuMP = "~1.22.1"
 MosekTools = "~0.15.1"
 Pajarito = "~0.8.2"
+SCIP = "~0.11.14"
 SumOfSquares = "~0.7.3"
 """
 
@@ -288,7 +439,13 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "307d725959d52147a7b807c7ea89585742e289b3"
+project_hash = "0a7827f5116f5fe95671a5b94be6f19c9f225c42"
+
+[[deps.ASL_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "6252039f98492252f9e47c312c8ffda0e3b9e78d"
+uuid = "ae81ac8f-d209-56e5-92de-9978fef736f9"
+version = "0.1.3+0"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra", "Test"]
@@ -364,6 +521,12 @@ git-tree-sha1 = "389ad5c84de1ae7cf0e28e381131c98ea87d54fc"
 uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
 version = "0.5.0"
 
+[[deps.CPLEX]]
+deps = ["CEnum", "Libdl", "MathOptInterface", "SparseArrays"]
+git-tree-sha1 = "ac239474b90c8cea06e5595ac87b1235900f3044"
+uuid = "a076750e-1247-5638-91d2-ce28b192dca0"
+version = "1.0.3"
+
 [[deps.CRC32c]]
 uuid = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
 
@@ -391,6 +554,24 @@ git-tree-sha1 = "f641eb0a4f00c343bbc32346e1217b86f3ce9dad"
 uuid = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
 version = "0.5.1"
 
+[[deps.Cbc]]
+deps = ["Cbc_jll", "MathOptInterface", "SparseArrays"]
+git-tree-sha1 = "53748bbb94ce592cfd5394528abc822f774f0d38"
+uuid = "9961bab8-2fa3-5c5a-9d89-47fab24efd76"
+version = "1.2.0"
+
+[[deps.Cbc_jll]]
+deps = ["Artifacts", "Cgl_jll", "Clp_jll", "CoinUtils_jll", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "OpenBLAS32_jll", "Osi_jll", "Pkg"]
+git-tree-sha1 = "5d24ea46edebb4f067b180cfc092a45d4d2c48b3"
+uuid = "38041ee0-ae04-5750-a4d2-bb4d0d83d27d"
+version = "2.10.5+2"
+
+[[deps.Cgl_jll]]
+deps = ["Artifacts", "Clp_jll", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "0c41f887cca7e95e7ca1cda5bd6e82e6f43b317d"
+uuid = "3830e938-1dd0-5f3e-8b8e-b3ee43226782"
+version = "0.60.2+6"
+
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
 git-tree-sha1 = "71acdbf594aab5bbb2cec89b208c41b4c411e49f"
@@ -403,6 +584,12 @@ git-tree-sha1 = "2fba81a302a7be671aefe194f0525ef231104e7f"
 uuid = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
 version = "0.1.8"
 
+[[deps.Clp_jll]]
+deps = ["Artifacts", "CoinUtils_jll", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "OpenBLAS32_jll", "Osi_jll", "Pkg"]
+git-tree-sha1 = "d9eca9fa2435959b5542b13409a8ec5f64c947c8"
+uuid = "06985876-5285-5a41-9fcb-8948a742cc53"
+version = "1.17.6+7"
+
 [[deps.CodecBzip2]]
 deps = ["Bzip2_jll", "Libdl", "TranscodingStreams"]
 git-tree-sha1 = "9b1ca1aa6ce3f71b3d1840c538a8210a043625eb"
@@ -414,6 +601,12 @@ deps = ["TranscodingStreams", "Zlib_jll"]
 git-tree-sha1 = "59939d8a997469ee05c4b4944560a820f9ba0d73"
 uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
 version = "0.7.4"
+
+[[deps.CoinUtils_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "OpenBLAS32_jll", "Pkg"]
+git-tree-sha1 = "5186155a8609b71eae7e104fa2b8fbf6ecd5d9bb"
+uuid = "be027038-0da8-5614-b30d-e42594cb92df"
+version = "2.11.3+4"
 
 [[deps.ColorBrewer]]
 deps = ["Colors", "JSON", "Test"]
@@ -719,6 +912,11 @@ git-tree-sha1 = "cbc9e63c209e2859d9c3c7c0a40ebffe2905be69"
 uuid = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 version = "0.10.2"
 
+[[deps.GMP_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "781609d7-10c4-51f6-84f2-b8444358ff6d"
+version = "6.2.1+2"
+
 [[deps.GPUArraysCore]]
 deps = ["Adapt"]
 git-tree-sha1 = "ec632f177c0d990e64d955ccc1b8c04c485a0950"
@@ -783,6 +981,18 @@ deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll",
 git-tree-sha1 = "129acf094d168394e80ee1dc4bc06ec835e510a3"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "2.8.1+1"
+
+[[deps.HiGHS]]
+deps = ["HiGHS_jll", "MathOptInterface", "PrecompileTools", "SparseArrays"]
+git-tree-sha1 = "1042e72e93e5916bbfe034576f2fc2fae73d5ec7"
+uuid = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
+version = "1.9.1"
+
+[[deps.HiGHS_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
+git-tree-sha1 = "656db2048ed731484df16fc91e7232a190e330fb"
+uuid = "8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
+version = "1.7.1+0"
 
 [[deps.Hypatia]]
 deps = ["Combinatorics", "DocStringExtensions", "GenericLinearAlgebra", "IterativeSolvers", "LinearAlgebra", "LinearMaps", "MathOptInterface", "PolynomialRoots", "Printf", "Requires", "SparseArrays", "SpecialFunctions", "SuiteSparse", "Test"]
@@ -880,6 +1090,12 @@ deps = ["Dates", "Test"]
 git-tree-sha1 = "e7cbed5032c4c397a6ac23d1493f3289e01231c4"
 uuid = "3587e190-3f89-42d0-90ee-14403ec27112"
 version = "0.1.14"
+
+[[deps.Ipopt_jll]]
+deps = ["ASL_jll", "Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "MUMPS_seq_jll", "OpenBLAS32_jll", "Pkg"]
+git-tree-sha1 = "e3e202237d93f18856b6ff1016166b0f172a49a8"
+uuid = "9cc047cb-c261-5740-88fc-0cf96f7bdcc7"
+version = "300.1400.400+0"
 
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "630b497eafcc20001bba38a4651b327dcfc491d2"
@@ -1065,11 +1281,23 @@ version = "0.3.28"
 [[deps.Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
+[[deps.METIS_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "1fd0a97409e418b78c53fac671cf4622efdf0f21"
+uuid = "d00139f3-1899-568f-a2f0-47f597d42d70"
+version = "5.1.2+0"
+
 [[deps.MKL_jll]]
 deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "oneTBB_jll"]
 git-tree-sha1 = "80b2833b56d466b3858d565adcd16a4a05f2089b"
 uuid = "856f044c-d86e-5d09-b602-aeab76dc8ba7"
 version = "2024.1.0+0"
+
+[[deps.MUMPS_seq_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "METIS_jll", "OpenBLAS32_jll", "Pkg"]
+git-tree-sha1 = "29de2841fa5aefe615dea179fcde48bb87b58f57"
+uuid = "d7ed1dd3-d0ae-5e8e-bfb4-87a502085b8d"
+version = "5.4.1+0"
 
 [[deps.MacroTools]]
 deps = ["Markdown", "Random"]
@@ -1194,6 +1422,12 @@ git-tree-sha1 = "0877504529a3e5c3343c6f8b4c0381e57e4387e4"
 uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
 version = "1.0.2"
 
+[[deps.Ncurses_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "3ac1ca10bae513c9cc8f83d7734b921b8007b574"
+uuid = "68e3532b-a499-55ff-9963-d1c0c0748b3a"
+version = "6.5.0+0"
+
 [[deps.Netpbm]]
 deps = ["FileIO", "ImageCore", "ImageMetadata"]
 git-tree-sha1 = "d92b107dbb887293622df7697a2223f9f8176fcd"
@@ -1220,6 +1454,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "887579a3eb005446d514ab7aeac5d1d027658b8f"
 uuid = "e7412a2a-1a6e-54c0-be00-318e2571c051"
 version = "1.3.5+1"
+
+[[deps.OpenBLAS32_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "9c6c2ed4b7acd2137b878eb96c68e63b76199d0f"
+uuid = "656ef2d0-ae68-5445-9ca0-591084a874a2"
+version = "0.3.17+0"
 
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
@@ -1265,6 +1505,12 @@ version = "1.3.2+0"
 git-tree-sha1 = "dfdf5519f235516220579f949664f1bf44e741c5"
 uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 version = "1.6.3"
+
+[[deps.Osi_jll]]
+deps = ["Artifacts", "CoinUtils_jll", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "OpenBLAS32_jll", "Pkg"]
+git-tree-sha1 = "ef540e28c9b82cb879e33c0885e1bbc9a1e6c571"
+uuid = "7da25872-d9ce-5375-a4d3-7a845f58efdd"
+version = "0.108.5+4"
 
 [[deps.PCRE2_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -1420,6 +1666,12 @@ git-tree-sha1 = "1342a47bf3260ee108163042310d26f2be5ec90b"
 uuid = "c84ed2f1-dad5-54f0-aa8e-dbefe2724439"
 version = "0.4.5"
 
+[[deps.Readline_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Ncurses_jll"]
+git-tree-sha1 = "9d70e0c890a6c7ca3eb1ca0eaabba4d34795b7fb"
+uuid = "05236dd9-4125-5232-aa7c-9ec0c9b2c25a"
+version = "8.2.1+0"
+
 [[deps.RecipesBase]]
 deps = ["PrecompileTools"]
 git-tree-sha1 = "5c3d09cc4f31f5fc6af001c250bf1278733100ff"
@@ -1465,6 +1717,24 @@ deps = ["LinearAlgebra"]
 git-tree-sha1 = "f479526c4f6efcbf01e7a8f4223d62cfe801c974"
 uuid = "af85af4c-bcd5-5d23-b03a-a909639aa875"
 version = "0.2.1"
+
+[[deps.SCIP]]
+deps = ["Libdl", "LinearAlgebra", "MathOptInterface", "OpenBLAS32_jll", "SCIP_PaPILO_jll", "SCIP_jll"]
+git-tree-sha1 = "3d6a6516d6940a93b732e8ec7127652a0ead89c6"
+uuid = "82193955-e24f-5292-bf16-6f2c5261a85f"
+version = "0.11.14"
+
+[[deps.SCIP_PaPILO_jll]]
+deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "GMP_jll", "Ipopt_jll", "JLLWrappers", "Libdl", "OpenBLAS32_jll", "Pkg", "Readline_jll", "Zlib_jll", "bliss_jll", "boost_jll", "oneTBB_jll"]
+git-tree-sha1 = "e26d55059b755e347fdfb66dbb614bd7e88712c8"
+uuid = "fc9abe76-a5e6-5fed-b0b7-a12f309cf031"
+version = "800.0.301+0"
+
+[[deps.SCIP_jll]]
+deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "GMP_jll", "Ipopt_jll", "JLLWrappers", "Libdl", "Pkg", "Readline_jll", "Zlib_jll", "bliss_jll", "boost_jll"]
+git-tree-sha1 = "cf69186eb29307fbb2319b90e6133797bad983ce"
+uuid = "e5ac4fe4-a920-5659-9bf8-f9f73e9e79ce"
+version = "800.0.301+0"
 
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
@@ -1785,6 +2055,18 @@ deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
 version = "1.2.12+3"
 
+[[deps.bliss_jll]]
+deps = ["Artifacts", "GMP_jll", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "f8b75e896a326a162a4f6e998990521d8302c810"
+uuid = "508c9074-7a14-5c94-9582-3d4bc1871065"
+version = "0.77.0+1"
+
+[[deps.boost_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
+git-tree-sha1 = "7a89efe0137720ca82f99e8daa526d23120d0d37"
+uuid = "28df3c45-c428-5900-9ff8-a3135698ca75"
+version = "1.76.0+1"
+
 [[deps.isoband_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "51b5eeb3f98367157a7a12a1fb0aa5328946c03c"
@@ -1865,6 +2147,7 @@ version = "3.5.0+0"
 # ╠═b5e39810-90db-4a12-a94e-f0235ff937c8
 # ╠═fb3e2635-92a1-4dd0-8398-13c7c08294f7
 # ╠═7db7ca58-0659-47e1-8d99-23c106505ed8
+# ╠═a1ff6390-ede4-4b42-b756-e52e32ddd99b
 # ╠═4a6c43b6-f817-4bfb-ab29-54c8d95e6099
 # ╠═2336b24a-5214-43c2-b039-e1b909038fa4
 # ╠═96649a33-b203-4f8a-9cee-479bc8986413
